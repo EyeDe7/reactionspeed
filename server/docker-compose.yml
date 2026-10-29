@@ -10,7 +10,7 @@ services:
       - DB_PATH=/data/scoreboard.db
       - ALLOWED_BINARIES_PATH=/app/allowed_binaries.json
       # Change INVITE_CODE to your private code shared only with your friends:
-      - INVITE_CODE=NIGGERS-2026
+      - INVITE_CODE=FRIENDS-2026
       # Secret used only for POST/DELETE /api/v1/admin/binaries when updating client hashes:
       - ADMIN_SECRET=dengmamm1-SECRET
       # When true, only unmodified official client binaries in allowed_binaries.json can submit:
