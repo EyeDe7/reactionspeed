@@ -1,0 +1,40 @@
+# Built desktop clients and release downloads
+/reaction_benchmark
+/reaction_benchmark.exe
+/reaction_benchmark_linux_x86_64
+/server/binaries/*
+
+# Local client identity, credentials, and results
+/reaction_config.ini
+/reaction_history.csv
+
+# Server data and local environment settings
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+/server/data/
+.env
+.env.*
+!.env.example
+
+# Python environments, caches, and packaging
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
+
+# Editor and operating system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

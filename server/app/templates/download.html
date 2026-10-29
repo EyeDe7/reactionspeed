@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Download Official Client — Reaction Speed Test{% endblock %}
+{% block stylesheets %}
+  <link rel="stylesheet" href="/static/css/download.css">
+{% endblock %}
+{% block content %}
+  <div class="container">
+    <div class="hero">
+      <div>
+        <h1>⬇ Download Official Reaction Speed Test Client</h1>
+        <div class="subtitle">Zero-Config Standalone Native Binaries — Pre-Configured with Server URL & Invite Code</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="/crypto" class="btn">🔐 How Signing Works</a>
+        <a href="/" class="btn">← Back to Live Scoreboard & Auditor</a>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Windows Card -->
+      <div class="card">
+        <div>
+          <h2>
+            <span>🪟 Windows (64-bit)</span>
+            <span class="pill pill-ok">Official Whitelisted .EXE</span>
+          </h2>
+          <p style="color:var(--muted);font-size:13.5px;margin-top:4px;">
+            Standalone native Win32/GDI executable (<code>reaction_benchmark.exe</code>). No installer, no DLLs, and no extra console window.
+          </p>
+          <div style="margin: 18px 0;">
+            {% with binary = windows, label = 'Windows (.exe)' %}{% include 'partials/download_button.html' %}{% endwith %}
+          </div>
+          <div style="margin-top:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;color:var(--gold);font-weight:700;text-transform:uppercase;">SHA-256 Checksum</span>
+              <button class="btn" style="padding:3px 9px;font-size:11px;" onclick="navigator.clipboard.writeText(document.getElementById('winSha').innerText)">Copy SHA-256</button>
+            </div>
+            <code class="hash-full" id="winSha">{{ win_sha }}</code>
+          </div>
+        </div>
+        <div class="step-box">
+          <strong style="color:#fff;">How to run on Windows:</strong><br>
+          1. Download <code>reaction_benchmark.exe</code> and double-click to launch.<br>
+          2. Press <b>[N]</b> inside the app to set your nickname.<br>
+          3. Press <b>[K]</b> anytime to copy your Ed25519 Private Key for website verification.
+        </div>
+      </div>
+
+      <!-- Linux Card -->
+      <div class="card">
+        <div>
+          <h2>
+            <span>🐧 Linux (x86_64)</span>
+            <span class="pill pill-ok">Official Whitelisted ELF</span>
+          </h2>
+          <p style="color:var(--muted);font-size:13.5px;margin-top:4px;">
+            Standalone native X11/OpenSSL executable (<code>reaction_benchmark_linux_x86_64</code>) with sub-millisecond hardware input polling.
+          </p>
+          <div style="margin: 18px 0;">
+            {% with binary = linux, label = 'Linux (x86_64)' %}{% include 'partials/download_button.html' %}{% endwith %}
+          </div>
+          <div style="margin-top:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;color:var(--gold);font-weight:700;text-transform:uppercase;">SHA-256 Checksum</span>
+              <button class="btn" style="padding:3px 9px;font-size:11px;" onclick="navigator.clipboard.writeText(document.getElementById('linSha').innerText)">Copy SHA-256</button>
+            </div>
+            <code class="hash-full" id="linSha">{{ lin_sha }}</code>
+          </div>
+        </div>
+        <div class="step-box">
+          <strong style="color:#fff;">How to run on Linux:</strong><br>
+          <code style="color:#38ef7d;">chmod +x reaction_benchmark_linux_x86_64 && ./reaction_benchmark_linux_x86_64</code><br>
+          Press <b>[N]</b> to set your nickname and <b>[K]</b> to copy your Private Key.
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

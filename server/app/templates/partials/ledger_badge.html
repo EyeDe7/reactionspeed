@@ -1,0 +1,5 @@
+{% if audit.ledger_intact -%}
+✓ CRYPTOGRAPHIC LEDGER INTACT — {{ audit.verified_entries }}/{{ audit.total_entries }} Blocks Signed (Ed25519 + SHA-256)
+{%- else -%}
+⚠ TAMPER DETECTED — {{ audit.errors|length }} Integrity Check(s) Failed
+{%- endif %}

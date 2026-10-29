@@ -1,0 +1,5 @@
+{% if binary.available -%}
+<a href="/download/{{ binary.filename }}" class="btn btn-primary" style="font-size:15px;padding:12px 20px;">⬇ Download for {{ label }} — {{ binary.size_kb }} KB</a>
+{%- else -%}
+<span class="pill pill-bad">Binary file not mounted in /app/binaries yet</span>
+{%- endif %}

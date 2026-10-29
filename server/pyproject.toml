@@ -1,0 +1,23 @@
+[project]
+name = "reaction-scoreboard-server"
+version = "2.0.0"
+description = "Reaction Speed Test — Anti-Cheat Friends Scoreboard Server"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.115.5",
+    "uvicorn[standard]==0.32.1",
+    "cryptography==43.0.3",
+    "pydantic==2.10.2",
+    "pydantic-settings==2.6.1",
+    "jinja2==3.1.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

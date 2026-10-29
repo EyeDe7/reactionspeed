@@ -1,0 +1,23 @@
+services:
+  reaction-scoreboard:
+    build: /mnt/applications/reactiontest-server/
+    container_name: reaction-scoreboard
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      - PORT=8787
+      - DB_PATH=/data/scoreboard.db
+      - ALLOWED_BINARIES_PATH=/app/allowed_binaries.json
+      # Change INVITE_CODE to your private code shared only with your friends:
+      - INVITE_CODE=NIGGERS-2026
+      # Secret used only for POST/DELETE /api/v1/admin/binaries when updating client hashes:
+      - ADMIN_SECRET=dengmamm1-SECRET
+      # When true, only unmodified official client binaries in allowed_binaries.json can submit:
+      - STRICT_BINARY_CHECK=true
+    volumes:
+      - /mnt/applications/reactiontest-server/data:/data
+      - /mnt/applications/reactiontest-server/allowed_binaries.json:/app/allowed_binaries.json:ro
+      - /mnt/applications/reactiontest-server/app:/app/app:ro
+      - /mnt/applications/reactiontest-server/server.py:/app/server.py:ro
+      - /mnt/applications/reactiontest-server/binaries:/app/binaries:ro

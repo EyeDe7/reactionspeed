@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% block title %}Cryptographic Signing & Anti-Cheat Architecture — Reaction Speed Test{% endblock %}
+{% block stylesheets %}
+  <link rel="stylesheet" href="/static/css/crypto.css">
+{% endblock %}
+{% block content %}
+  <div class="container">
+    <div class="hero">
+      <div>
+        <h1>🔐 Cryptographic Signing & Anti-Cheat Architecture</h1>
+        <div class="subtitle">Technical Specification: Ed25519 Asymmetric Signatures (RFC 8032), Dual HMAC-SHA256 Binary Attestation & Append-Only SHA-256 Hash Chain</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="/" class="btn btn-primary">← Back to Live Scoreboard</a>
+        <a href="/download" class="btn">⬇ Download Client</a>
+        <a href="/api/v1/audit/verify" target="_blank" class="btn">Raw JSON Audit</a>
+      </div>
+    </div>
+
+    <!-- Section 1: 5-Stage End-to-End Pipeline -->
+    <div class="card">
+      <h2>
+        <span>1. End-to-End 5-Stage Cryptographic Lifecycle</span>
+        <span class="pill pill-ok">Zero-Trust Score Verification</span>
+      </h2>
+      <p>
+        Every score displayed on the leaderboard passes through five cryptographic and biometric verification layers. Neither network packet tampering nor direct SQLite database edits can forge a verified score without detection.
+      </p>
+      <div class="pipeline">
+        <div class="step-card">
+          <div class="step-num">Stage 1 • Local Init</div>
+          <div class="step-title">Ed25519 Keypair & Binary Self-Hash</div>
+          <div class="step-desc">
+            On first launch, the client generates a 256-bit random seed (<code class="code-inline">private_seed_hex</code>), derives its 32-byte <code class="code-inline">Ed25519</code> public key, and hashes its own executable file on disk via <code class="code-inline">SHA-256</code>.
+          </div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">Stage 2 • Identity</div>
+          <div class="step-title">Public-Key Binding (/auth/register)</div>
+          <div class="step-desc">
+            The client registers its <code class="code-inline">nickname</code>, <code class="code-inline">public_key</code>, and <code class="code-inline">binary_sha256</code>. The server binds the nickname to that Ed25519 public key and stores only <code class="code-inline">SHA-256(api_token)</code>.
+          </div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">Stage 3 • Pre-Round</div>
+          <div class="step-title">Signed Challenge Ticket (/challenge)</div>
+          <div class="step-desc">
+            Before Round 1, the client Ed25519-signs <code class="code-inline">CHALLENGE|id|ts|sha</code>. The server verifies the signature & clock skew and issues a single-use <code class="code-inline">challenge_nonce</code> + 5 random wait delays.
+          </div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">Stage 4 • Submission</div>
+          <div class="step-title">Dual Signing (/submit)</div>
+          <div class="step-desc">
+            After 5 rounds, the client builds the 10-field <code class="code-inline">canonical_payload</code> and signs it twice: an asymmetric <code class="code-inline">Ed25519</code> player signature and a 2-stage <code class="code-inline">HMAC-SHA256</code> binary attestation.
+          </div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">Stage 5 • Ledger</div>
+          <div class="step-title">SHA-256 Hash-Chain Block</div>
+          <div class="step-desc">
+            The server verifies wall-clock timing, biometric bounds, HMAC, and Ed25519 signature, then commits the score into an append-only <code class="code-inline">SHA-256</code> hash chain linked to <code class="code-inline">prev_hash</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Interactive Live Block & SHA-256 Hash Chain Verifier -->
+    <div class="card">
+      <h2>
+        <span>2. Interactive Live Block & SHA-256 Chain Inspector</span>
+        <span class="pill pill-info">{{ 'Loaded From Latest Live DB Block #' ~ sample_block.block_id if sample_block.is_live else 'Loaded With Canonical Genesis Vector' }}</span>
+      </h2>
+      <p>
+        Every block in the database commits to its predecessor via <code class="code-inline">entry_hash = SHA256(prev_hash + "|" + canonical_payload + "|" + ed25519_signature + "|" + submitted_at_str)</code>.
+        Try editing even a single digit in the <b>Canonical Payload</b> or <b>Previous Block Hash</b> below—your browser will recompute the 256-bit SHA-256 digest in real time and show how the avalanche effect immediately breaks the block hash!
+      </p>
+
+      <div class="sandbox-grid">
+        <div class="sandbox-field">
+          <label><span>1. Previous Block Hash (prev_hash)</span><span>64 hex chars (256 bits)</span></label>
+          <input type="text" id="sbPrevHash" class="sandbox-input" oninput="updateLiveSandbox()">
+        </div>
+        <div class="sandbox-field">
+          <label><span>2. Signed Canonical Payload (canonical_payload)</span><span>10 pipe-delimited fields</span></label>
+          <input type="text" id="sbCanon" class="sandbox-input" oninput="updateLiveSandbox()">
+        </div>
+        <div class="sandbox-field">
+          <label><span>3. Player Ed25519 Digital Signature (ed25519_signature)</span><span>128 hex chars (64 bytes: R || S)</span></label>
+          <input type="text" id="sbSig" class="sandbox-input" oninput="updateLiveSandbox()">
+        </div>
+        <div class="sandbox-field">
+          <label><span>4. Block Timestamp (submitted_at_str)</span><span>UTC/Server Wall-Clock</span></label>
+          <input type="text" id="sbTs" class="sandbox-input" oninput="updateLiveSandbox()">
+        </div>
+      </div>
+
+      <div class="compare-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+          <span style="font-size:12.5px;font-weight:700;color:var(--muted);text-transform:uppercase;">Live Browser SHA-256 Recomputation vs. Stored Ledger Block Hash</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span id="sbMatchBadge" class="pill pill-ok">✓ EXACT SHA-256 BLOCK MATCH</span>
+            <button class="btn" style="padding:4px 10px;font-size:11.5px;" onclick="resetLiveSandbox()">Reset to Original Block</button>
+          </div>
+        </div>
+        <div style="font-size:12.5px;margin-bottom:6px;">
+          <span style="color:var(--muted);display:inline-block;min-width:190px;font-weight:600;">Stored Block Hash (DB):</span>
+          <code class="code-inline" id="sbStoredHash"></code>
+        </div>
+        <div style="font-size:12.5px;">
+          <span style="color:var(--muted);display:inline-block;min-width:190px;font-weight:600;">Browser Computed SHA-256:</span>
+          <code class="code-inline" id="sbComputedHash"></code>
+        </div>
+      </div>
+
+      <h3>Decoded 10-Field Anatomy of the Canonical Payload Above</h3>
+      <div class="token-grid" id="sbTokenGrid"></div>
+    </div>
+
+    <!-- Section 3: Asymmetric Ed25519 Mathematics & Implementation -->
+    <div class="grid-2">
+      <div class="card" style="margin-bottom:0;">
+        <h2>
+          <span>3. Ed25519 Asymmetric Signatures (RFC 8032)</span>
+          <span class="pill pill-ok">128-bit Security</span>
+        </h2>
+        <p>
+          Each player's identity is anchored by an <b>Ed25519</b> keypair operating over the Twisted Edwards curve birationally equivalent to Curve25519 over the prime field <b>𝔽<sub>p</sub></b> where <code>p = 2<sup>255</sup> - 19</code>:
+        </p>
+        <div class="formula-box">
+          -x² + y² ≡ 1 - (121665 / 121666) · x² · y²  (mod 2²⁵⁵ - 19)<br>
+          Base Point Order L = 2²⁵² + 27742317777372353535851937790883648493
+        </div>
+        <h3>Step A: Key Derivation & Bit Clamping</h3>
+        <p>
+          From the player's 32-byte random seed <code>k</code> (<code class="code-inline">private_seed_hex</code>), the client computes a 64-byte digest <code>h = SHA-512(k)</code>. The lower 32 bytes <code>h[0..31]</code> are clamped to form the secret scalar <code>s</code>, clearing the curve cofactor (<code>8</code>) and fixing the top bit:
+        </p>
+        <div class="code-block">SHA512(seed[0..31]) -&gt; d[0..63]
+d[0]  &amp;= 248;   // Clear lowest 3 bits (cofactor = 8)
+d[31] &amp;= 127;   // Clear bit 255
+d[31] |= 64;    // Set bit 254 (fixed scalar length)
+PublicKey A = PackPoint( ScalarBaseMult(B, d[0..31]) );</div>
+
+        <h3>Step B: Deterministic Signing (Why Re-Signing Matches Byte-for-Byte)</h3>
+        <p>
+          Unlike ECDSA (which requires a random per-signature nonce <code>k</code> that can leak the private key if reused), Ed25519 derives its ephemeral nonce <code>r</code> <b>deterministically</b> using the upper 32 bytes <code>d[32..63]</code> and the message <code>M</code> (<code class="code-inline">canonical_payload</code>):
+        </p>
+        <div class="code-block">r = SHA512(d[32..63] || M) mod L
+R = PackPoint( [r]B )                       // 32-byte point commitment
+k = SHA512(R || PublicKey_A || M) mod L     // Fiat-Shamir challenge scalar
+S = (r + k * s) mod L                       // 32-byte response scalar
+Signature = Hex( R[0..31] || S[0..31] )     // 64 bytes (128 hex chars)</div>
+        <p style="margin-bottom:0;">
+          <b>Why this matters for the Website Auditor:</b> Because <code>r</code> and <code>S</code> are 100% deterministic functions of <code class="code-inline">private_seed_hex</code> and <code class="code-inline">canonical_payload</code>, pasting your private seed into the homepage auditor re-runs the signing equation and proves that the freshly generated 128-character signature matches the database signature <b>byte-for-byte</b>.
+        </p>
+      </div>
+
+      <div class="card" style="margin-bottom:0;">
+        <h2>
+          <span>4. Binary Self-Attestation & Two-Stage HMAC</span>
+          <span class="pill pill-info">Client Integrity</span>
+        </h2>
+        <p>
+          A valid player key alone is not enough—the server also verifies that the score was produced by an unmodified, official client executable.
+        </p>
+        <h3>Step A: Runtime Executable Self-Hashing</h3>
+        <p>
+          Immediately upon launch (<code class="code-inline">main()</code>), the binary resolves its own kernel executable path and streams its binary image through <code class="code-inline">SHA-256</code> in 8,192-byte chunks:
+        </p>
+        <div class="code-block">// Linux: resolves kernel symlink
+readlink("/proc/self/exe", buf, PATH_MAX);
+// Windows: resolves loaded PE module path
+GetModuleFileNameA(nullptr, buf, MAX_PATH);</div>
+        <p>
+          Currently whitelisted official client SHA-256 digests in <code class="code-inline">allowed_binaries</code>:
+        </p>
+        <ul style="margin:6px 0 14px 18px;padding:0;font-size:12.5px;color:#cfdff0;">
+          {% for b in allowed_binaries %}<li><strong style='color:var(--gold);'>{{ b.platform_label }}:</strong> <code class='code-inline'>{{ b.sha256 }}</code></li>{% else %}<li>No binary hashes registered in <code>allowed_binaries</code> table.</li>{% endfor %}
+        </ul>
+
+        <h3>Step B: Two-Stage Key-Derived HMAC-SHA256</h3>
+        <p>
+          When submitting a 5-round set, the client reconstructs its obfuscated 256-bit protocol secret (<code>K<sub>proto</sub></code>) in memory (<code class="code-inline">enc[i] ^ (0x5A + i * 7)</code>) and performs a two-stage <code class="code-inline">HMAC-SHA256</code> derivation bound to the single-use <code class="code-inline">challenge_nonce</code>:
+        </p>
+        <div class="code-block">// Stage 1: Derive per-challenge ephemeral attestation key
+attest_key = HMAC_SHA256(
+    K_proto,
+    binary_sha256 + ":" + challenge_nonce + ":" + api_token
+);
+
+// Stage 2: Authenticate the canonical score payload
+attestation_hmac = HMAC_SHA256(attest_key, canonical_payload);</div>
+        <p style="margin-bottom:0;">
+          The server independently recomputes <code class="code-inline">expected_attest</code> and compares it in constant time via <code class="code-inline">hmac.compare_digest()</code> to prevent timing side-channel attacks.
+        </p>
+      </div>
+    </div>
+
+    <!-- Section 5: Server Challenge-Response & Biometric Anti-Cheat -->
+    <div class="card">
+      <h2>
+        <span>5. Challenge-Response Protocol & Wall-Clock / Biometric Anti-Cheat</span>
+        <span class="pill pill-ok">Replay & Bot Protection</span>
+      </h2>
+      <p>
+        To prevent pre-computed payloads, packet replays, pixel-trigger bots, and fixed-interval macros, the server controls the random wait delays for every round and validates real-time elapsed wall-clock duration.
+      </p>
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>Verification Check</th>
+            <th>Mathematical / Cryptographic Rule</th>
+            <th>Attack Vector Blocked</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:#fff;">Signed Challenge Request</strong></td>
+            <td><code class="code-inline">Ed25519_Verify(pub_key, "CHALLENGE|" + player_id + "|" + ts + "|" + bin_sha256)</code> with <code class="code-inline">|now - ts| &le; 300s</code></td>
+            <td>Blocks unauthenticated challenge harvesting and stale request replay.</td>
+          </tr>
+          <tr>
+            <td><strong style="color:#fff;">Server-Issued Wait Delays</strong></td>
+            <td>Server CSPRNG (<code class="code-inline">secrets.randbelow(3001) + 1500</code>) generates <code>w<sub>1</sub>..w<sub>5</sub> &isin; [1500, 4500] ms</code> and a 128-bit <code class="code-inline">challenge_nonce</code></td>
+            <td>Prevents client-side prediction of stimulus timing and binds the set to a single 120-second window.</td>
+          </tr>
+          <tr>
+            <td><strong style="color:#fff;">Single-Use Replay Lock</strong></td>
+            <td>Atomic <code class="code-inline">UPDATE challenges SET used = 1 WHERE challenge_id = ?</code> before score evaluation</td>
+            <td>Guarantees a <code class="code-inline">challenge_id</code> can never be submitted more than once.</td>
+          </tr>
+          <tr>
+            <td><strong style="color:#fff;">Wall-Clock Elapsed Proof</strong></td>
+            <td><code>t<sub>submit</sub> - t<sub>issued</sub> &ge; &sum; w<sub>i</sub> + &sum; r<sub>i</sub> - 200 ms</code></td>
+            <td>Proves the client genuinely waited through all 5 server-prescribed random delays in real time.</td>
+          </tr>
+          <tr>
+            <td><strong style="color:#fff;">Hardware & Physiological Bounds</strong></td>
+            <td>Each round <code>r<sub>i</sub> &isin; [25.0 ms, 2000.0 ms]</code>; at most 2 rounds <code>&lt; 100 ms</code>; 5-round mean <code>&ge; 110.0 ms</code></td>
+            <td>Blocks synthetic 0–24ms packet injection and automated screen-pixel trigger bots.</td>
+          </tr>
+          <tr>
+            <td><strong style="color:#fff;">Macro Jitter Variance Check</strong></td>
+            <td>Sample standard deviation <code>&sigma;(r<sub>1</sub>, r<sub>2</sub>, r<sub>3</sub>, r<sub>4</sub>, r<sub>5</sub>) &ge; 0.05 ms</code></td>
+            <td>Blocks deterministic hardware/software timer macros with unnatural sub-50µs uniformity.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Section 6: Cross-Platform Cryptographic Engine & SQLite Hash Chain -->
+    <div class="grid-2" style="margin-bottom:0;">
+      <div class="card" style="margin-bottom:0;">
+        <h2>
+          <span>6. Cross-Platform Native Crypto Engine</span>
+          <span class="pill pill-info">Linux & Windows Parity</span>
+        </h2>
+        <p>
+          Both desktop binaries produce identical SHA-256 digests, HMAC-SHA256 tags, and RFC 8032 Ed25519 signatures:
+        </p>
+        <ul style="margin:8px 0 0 18px;padding:0;font-size:13.5px;color:#cfdff0;">
+          <li style="margin-bottom:8px;">
+            <strong style="color:#fff;">Linux (<code class="code-inline">reaction_benchmark_linux_x86_64</code>):</strong>
+            Uses hardware-accelerated <code class="code-inline">OpenSSL libcrypto</code> (<code class="code-inline">EVP_DigestInit_ex</code> with <code class="code-inline">EVP_sha256()</code>, <code class="code-inline">HMAC()</code>, and <code class="code-inline">EVP_PKEY_ED25519</code> raw key derivation &amp; signing).
+          </li>
+          <li style="margin-bottom:8px;">
+            <strong style="color:#fff;">Windows (<code class="code-inline">reaction_benchmark.exe</code>):</strong>
+            To run as a zero-dependency standalone <code class="code-inline">.exe</code> with no external DLLs, <code class="code-inline">crypto.hpp</code> embeds a self-contained C++20 implementation of <code class="code-inline">SHA-256</code>, <code class="code-inline">SHA-512</code>, <code class="code-inline">HMAC-SHA256</code>, and radix-<code>2<sup>16</sup></code> <code class="code-inline">Ed25519</code> group arithmetic (<code class="code-inline">gf = int64_t[16]</code>) with branchless constant-time conditional point swaps (<code class="code-inline">cswapPoint</code> / <code class="code-inline">sel25519</code>).
+          </li>
+          <li>
+            <strong style="color:#fff;">Server Verifier (<code class="code-inline">server.py</code>):</strong>
+            Verifies all signatures using Python's OpenSSL-backed <code class="code-inline">cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PublicKey</code>.
+          </li>
+        </ul>
+      </div>
+
+      <div class="card" style="margin-bottom:0;">
+        <h2>
+          <span>7. Continuous Hash-Chain Ledger Audit</span>
+          <span class="pill pill-ok">Tamper-Evident SQLite</span>
+        </h2>
+        <p>
+          Whenever the leaderboard or <code class="code-inline">/api/v1/audit/verify</code> is queried, <code class="code-inline">audit_ledger()</code> walks every row in <code class="code-inline">scores</code> ordered by <code class="code-inline">id ASC</code> starting from <code class="code-inline">GENESIS_HASH = "0" * 64</code>:
+        </p>
+        <div class="code-block">expected_prev = "0000000000000000000000000000000000000000000000000000000000000000"
+for block in scores:
+    assert block.prev_hash == expected_prev
+    assert SHA256(f"{prev}|{canon}|{sig}|{ts}") == block.entry_hash
+    assert SQL_Columns_Match_Canonical_Payload(block)
+    assert Ed25519_Verify(player.public_key, block.canon, block.sig)
+    expected_prev = block.entry_hash</div>
+        <p style="margin-bottom:0;">
+          If anyone modifies an <code class="code-inline">avg_ms</code> or <code class="code-inline">best_ms</code> column in SQLite, deletes a row, or inserts a row without the player's private key, both the Ed25519 signature check and the SHA-256 hash chain fail immediately.
+        </p>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+{% block scripts %}
+  <script type="application/json" id="initial-block">{{ sample_block|tojson }}</script>
+  <script src="/static/js/crypto.js"></script>
+{% endblock %}

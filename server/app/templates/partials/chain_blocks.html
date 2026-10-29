@@ -1,0 +1,26 @@
+{% for block in chain_blocks -%}
+<div class="block-item">
+  <div class="block-header">
+    <div>
+      <span class="block-id">Block #{{ block.block_id }}</span>
+      <strong style="margin-left:10px;color:#fff;">{{ block.nickname }}</strong>
+      <span style="margin-left:12px;color:#38ef7d;font-weight:700;">Avg: {{ "%.2f"|format(block.avg_ms) }} ms</span>
+      <span style="margin-left:10px;color:#ffd166;">Best: {{ "%.2f"|format(block.best_ms) }} ms</span>
+      <span style="margin-left:10px;color:#8da2b5;font-size:12px;">({% for r in block.rounds_ms %}{{ "%.1f"|format(r) }}ms{% if not loop.last %}, {% endif %}{% endfor %})</span>
+    </div>
+    <div>
+      <span class="pill {{ 'pill-ok' if block.verified else 'pill-bad' }}">{{ 'Ed25519 + Chain Verified' if block.verified else 'TAMPERED' }}</span>
+      <span class="muted" style="margin-left:8px;">{{ block.submitted_at_str }}</span>
+    </div>
+  </div>
+  <div class="hash-grid">
+    <div><span class="hash-label">Entry Hash (SHA-256):</span> <code class="hash-full">{{ block.entry_hash }}</code></div>
+    <div><span class="hash-label">Prev Block Hash:</span> <code class="hash-full">{{ block.prev_hash }}</code></div>
+    <div><span class="hash-label">Player Public Key:</span> <code class="hash-full">{{ block.public_key or 'N/A' }}</code></div>
+    <div><span class="hash-label">Ed25519 Signature:</span> <code class="hash-full">{{ block.ed25519_signature }}</code></div>
+    <div><span class="hash-label">Signed Payload:</span> <code class="hash-full">{{ block.canonical_payload }}</code></div>
+  </div>
+</div>
+{% else -%}
+<div class="empty">Genesis Block (0000...0000) — Waiting for first verified submission.</div>
+{% endfor -%}

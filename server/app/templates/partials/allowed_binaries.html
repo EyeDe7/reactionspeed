@@ -1,0 +1,3 @@
+{% for b in allowed_binaries -%}
+<div class="bin-row"><span class="bin-plat">{{ b.platform_label }}</span><code class="hash-full">{{ b.sha256 }}</code></div>
+{% endfor -%}

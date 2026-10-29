@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Reaction Speed Test — Friends Leaderboard & Cryptographic Ledger{% endblock %}
+{% block stylesheets %}
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+{% endblock %}
+{% block content %}
+  <div class="container">
+    <div class="hero">
+      <div class="hero-top">
+        <div>
+          <h1>⚡ Reaction Speed Test — Friends Leaderboard</h1>
+          <div class="subtitle">Cryptographically Signed Scoreboard (Ed25519 Asymmetric Signatures + SHA-256 Hash Chain)</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <a href="/crypto" class="btn">🔐 How Signing Works</a>
+          <a href="/download" class="btn btn-primary">⬇ Download Client (Windows & Linux)</a>
+          <div class="badge {{ 'badge-ok' if audit.ledger_intact else 'badge-bad' }}">{% include 'partials/ledger_badge.html' %}</div>
+        </div>
+      </div>
+      <div class="chain-box">
+        <div>
+          <div class="chain-label">Current Head Chain Hash (SHA-256)</div>
+          <code class="hash-full" id="headHashText">{{ audit.head_hash }}</code>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('headHashText').innerText)">Copy Head Hash</button>
+          <a href="/crypto" class="btn">Cryptographic Architecture</a>
+          <a href="/api/v1/audit/verify" target="_blank" class="btn">Raw JSON Ledger</a>
+          <a href="/download" class="btn">Download Page</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Database Reaction Speed Bell Curve & Distribution Card -->
+    <div class="card" style="margin-bottom: 26px;">
+      <h2>
+        <span>📈 Database Reaction Speed Bell Curve & Distribution</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn-sm btn-toggle-active" id="btnModeRounds" onclick="setDistMode('rounds')">All Individual Rounds</button>
+          <button class="btn-sm" id="btnModeAverages" onclick="setDistMode('averages')">5-Round Averages</button>
+          <span style="color:#2b4c70;">|</span>
+          <button class="btn-sm btn-toggle-active" id="btnFitLognorm" onclick="setCurveFit('lognorm')">Log-Normal Bell Curve</button>
+          <button class="btn-sm" id="btnFitGaussian" onclick="setCurveFit('gaussian')">Gaussian Normal Curve</button>
+        </div>
+      </h2>
+      <p style="margin:0 0 14px 0;color:var(--muted);font-size:13px;">
+        Calculated directly from all cryptographically verified results stored in the SQLite WAL database, overlaying the empirical <code>10 ms</code> histogram buckets, the fitted probability density Bell Curve, the ±1σ standard deviation band, and each unique player's best mark.
+      </p>
+      <div class="kpi-grid">
+        <div class="kpi-tile">
+          <div class="kpi-label">DB Sample Size (N)</div>
+          <div class="kpi-val" id="kpiCount" style="color:var(--cyan);">—</div>
+        </div>
+        <div class="kpi-tile">
+          <div class="kpi-label">DB Mean (μ)</div>
+          <div class="kpi-val" id="kpiMean" style="color:var(--accent);">—</div>
+        </div>
+        <div class="kpi-tile">
+          <div class="kpi-label">DB Median (P50)</div>
+          <div class="kpi-val" id="kpiMedian" style="color:#fff;">—</div>
+        </div>
+        <div class="kpi-tile">
+          <div class="kpi-label">Std Deviation (σ)</div>
+          <div class="kpi-val" id="kpiStd" style="color:var(--gold);">—</div>
+        </div>
+        <div class="kpi-tile">
+          <div class="kpi-label">Top 10% Mark (P10)</div>
+          <div class="kpi-val" id="kpiP10" style="color:#90e0ef;">—</div>
+        </div>
+        <div class="kpi-tile">
+          <div class="kpi-label">Fastest DB Record</div>
+          <div class="kpi-val" id="kpiMin" style="color:var(--coral);">—</div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="dbBellCurveCanvas" style="width:100%;height:330px;display:block;"></canvas>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#38ef7d;"></span>Database Fitted Bell Curve</span>
+          <span class="legend-item"><span class="legend-dot" style="background:rgba(86,204,242,0.45);border:1px solid #56ccf2;"></span>Database Empirical Histogram (10ms bins)</span>
+          <span class="legend-item"><span class="legend-dot" style="background:rgba(56,239,125,0.18);border:1px dashed #38ef7d;"></span>±1σ Standard Deviation Band (68.2%)</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#ff758f;"></span>Unique Players' Best Marks</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#7c93a8;"></span>Global Reference Curve (215ms Median)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Private / Public Key Cryptographic Verifier Card -->
+    <div class="card" style="margin-bottom: 26px;">
+      <h2>
+        <span>🔐 Verify & Audit Your Scores With Your Private or Public Key</span>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span class="muted">Press [K] in the desktop app to copy your key</span>
+          <a href="/crypto" class="btn-sm" style="text-decoration:none;color:var(--cyan);border-color:var(--cyan);">📖 Deep-Dive: How Signing Works →</a>
+        </div>
+      </h2>
+      <p style="margin:0;color:var(--muted);font-size:13.5px;">
+        Paste your 64-character <code>private_seed_hex</code> (from <code>reaction_config.ini</code> or by pressing <b>[K]</b> in the client) or your <code>public_key_hex</code>.
+        The auditor derives your Ed25519 public key, re-computes your Ed25519 digital signatures over every round payload, and verifies that no score or hash chain link has been altered.
+      </p>
+      <div class="verifier-box">
+        <input type="password" id="keyInput" class="input-key" placeholder="Paste your 64-char hex Ed25519 private_seed_hex or public_key_hex...">
+        <button class="btn" onclick="toggleKeyVis()">Show/Hide</button>
+        <button class="btn btn-primary" onclick="runKeyAudit()">Verify My Signatures & Chain</button>
+      </div>
+      <div id="auditResult" class="audit-result"></div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>
+          <span>🏆 Top 5-Round Averages</span>
+          <span class="muted">
+            Rows:
+            <select id="perPageSelect" class="select-per-page" onchange="changePerPage(this.value)">
+              <option value="10" {{ 'selected' if per_page == 10 else '' }}>10</option>
+              <option value="25" {{ 'selected' if per_page == 25 else '' }}>25</option>
+              <option value="50" {{ 'selected' if per_page == 50 else '' }}>50</option>
+            </select>
+          </span>
+        </h2>
+        <table>
+          <thead><tr><th>Rank</th><th>Player</th><th>5-Round Avg</th><th>Best</th><th>Block Hash</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody id="avgTableBody">{% with rows = top_averages, primary_field = 'avg_ms', secondary_field = 'best_ms', empty_text = 'No verified 5-round sets submitted yet.' %}{% include 'partials/score_rows.html' %}{% endwith %}</tbody>
+        </table>
+        <div class="pager">
+          <span class="muted" id="avgCountInfo">Total Verified Sets: {{ total_scores }}</span>
+          <div class="pager-btns">
+            <button class="btn-sm" id="avgFirstBtn" onclick="changeAvgPage(1)" {{ 'disabled' if avg_page <= 1 else '' }}>« First</button>
+            <button class="btn-sm" id="avgPrevBtn" onclick="changeAvgPage(currentAvgPage - 1)" {{ 'disabled' if avg_page <= 1 else '' }}>‹ Prev</button>
+            <span class="page-indicator" id="avgPageLabel">Page {{ avg_page }} / {{ total_pages }}</span>
+            <button class="btn-sm" id="avgNextBtn" onclick="changeAvgPage(currentAvgPage + 1)" {{ 'disabled' if avg_page >= total_pages else '' }}>Next ›</button>
+            <button class="btn-sm" id="avgLastBtn" onclick="changeAvgPage(totalPages)" {{ 'disabled' if avg_page >= total_pages else '' }}>Last »</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span>⚡ Top Single Reactions</span><span class="muted">Fastest Single Click</span></h2>
+        <table>
+          <thead><tr><th>Rank</th><th>Player</th><th>Best Single</th><th>Set Avg</th><th>Block Hash</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody id="singleTableBody">{% with rows = top_singles, primary_field = 'best_ms', secondary_field = 'avg_ms', empty_text = 'No verified single rounds submitted yet.' %}{% include 'partials/score_rows.html' %}{% endwith %}</tbody>
+        </table>
+        <div class="pager">
+          <span class="muted" id="singleCountInfo">Total Verified Sets: {{ total_scores }}</span>
+          <div class="pager-btns">
+            <button class="btn-sm" id="singleFirstBtn" onclick="changeSinglePage(1)" {{ 'disabled' if single_page <= 1 else '' }}>« First</button>
+            <button class="btn-sm" id="singlePrevBtn" onclick="changeSinglePage(currentSinglePage - 1)" {{ 'disabled' if single_page <= 1 else '' }}>‹ Prev</button>
+            <span class="page-indicator" id="singlePageLabel">Page {{ single_page }} / {{ total_pages }}</span>
+            <button class="btn-sm" id="singleNextBtn" onclick="changeSinglePage(currentSinglePage + 1)" {{ 'disabled' if single_page >= total_pages else '' }}>Next ›</button>
+            <button class="btn-sm" id="singleLastBtn" onclick="changeSinglePage(totalPages)" {{ 'disabled' if single_page >= total_pages else '' }}>Last »</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 26px;">
+      <h2><span>🔗 Full SHA-256 Hash Chain & Ed25519 Signature Ledger</span><span class="muted">Latest {{ chain_blocks|length }} Verified Blocks</span></h2>
+      {% include 'partials/chain_blocks.html' %}
+    </div>
+
+    <div class="card">
+      <h2><span>🛡️ Allowed Client Binary SHA-256 Fingerprints</span><span class="muted">Strict Binary Attestation: {{ 'ACTIVE' if strict_binary_check else 'OFF' }}</span></h2>
+      {% include 'partials/allowed_binaries.html' %}
+    </div>
+  </div>
+{% endblock %}
+{% block scripts %}
+  <script type="application/json" id="dashboard-state">{{ dashboard_state|tojson }}</script>
+  <script src="/static/js/dashboard.js"></script>
+{% endblock %}
